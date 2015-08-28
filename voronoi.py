@@ -6,7 +6,7 @@ import random
 
 # Code stolen mostly from https://gist.github.com/pv/8036995
 
-def voronoi_finite_polygons_2d(points, radius=None):
+def voronoi_polygons(points, radius=None):
     """
     Reconstruct infinite voronoi regions in a 2D diagram to finite
     regions.
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     points = np.random.randn(1000, 2)
 
     # plot
-    polygons = voronoi_finite_polygons_2d(points)
+    polygons = voronoi_polygons(points)
     print polygons
 
     # colorize

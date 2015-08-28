@@ -1,30 +1,38 @@
 import shapely.geometry as sg
+from shapely.ops import cascaded_union
 import numpy as np
 import random
 from descartes import PolygonPatch
 import matplotlib.pyplot as plt
 from colorsys import hsv_to_rgb
-
-points = np.random.randn(1000, 2)
-
-inf = 1e9
-plane = sg.Polygon([(inf,inf), (inf,-inf), (-inf,-inf), (-inf,inf)])
+from voronoi import voronoi_polygons
 
 fig, ax = plt.subplots()
 
-def split_points(poly, points, lw=3.0, lo=0.0, hi=5.0/6.0):
-    if len(points) <= 1:
-        x = [p[0] for p in points]
-        y = [p[1] for p in points]
+def split_points(poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0):
+    if len(indices) <= 1:
+        x = [points[i][0] for i in indices]
+        y = [points[i][1] for i in indices]
         c = hsv_to_rgb((lo+hi)/2, 1, 1)
 
         # c = np.array([c] * len(points))
-        ax.add_patch(PolygonPatch(poly, fc=c, lw=0, zorder=0))
+        poly_vor = cascaded_union([sg.Polygon(voronoi[i]) for i in indices])
+
+        #diff = poly.symmetric_difference(poly_vor)
+        #if diff.geom_type == 'Polygon':
+        #    polys = [diff]
+        #else:
+        #    polys = diff.geoms
+
+        polys = [poly_vor]
+
+        for poly in polys:
+            ax.add_patch(PolygonPatch(poly, fc=c, lw=0, zorder=0))
         plt.scatter(x, y, marker='x', zorder=99, c='black', s=1.0)
 
         return
-    
-    p1, p2 = random.sample(points, 2)
+
+    p1, p2 = [points[i] for i in random.sample(indices, 2)]
     v = p2-p1
     m = (p1+p2)/2
     a = np.dot(v, m)
@@ -38,17 +46,24 @@ def split_points(poly, points, lw=3.0, lo=0.0, hi=5.0/6.0):
     ax.add_patch(PolygonPatch(halfplane_a, fc='none', lw=lw, zorder=1))
     ax.add_patch(PolygonPatch(halfplane_b, fc='none', lw=lw, zorder=1))
 
-    points_a = [p for p in points if np.dot(p, v)-a > 0]
-    points_b = [p for p in points if np.dot(p, v)-a < 0]
+    indices_a = [i for i in indices if np.dot(points[i], v)-a > 0]
+    indices_b = [i for i in indices if np.dot(points[i], v)-a < 0]
 
-    split_points(halfplane_a, points_a, lw*0.8, lo, (lo+hi)/2)
-    split_points(halfplane_b, points_b, lw*0.8, (lo+hi)/2, hi)
+    split_points(halfplane_a, points, voronoi, indices_a, lw*0.8, lo, (lo+hi)/2)
+    split_points(halfplane_b, points, voronoi, indices_b, lw*0.8, (lo+hi)/2, hi)
 
-split_points(plane, points)
+if __name__ == '__main__':
+    points = np.random.randn(250, 2)
+    voronoi = voronoi_polygons(points)
 
-plt.axis('equal')
-plt.axis('off')
-plt.xlim(-2.5, 2.5)
-plt.ylim(-2.5, 2.5)
-# plt.show()
-plt.savefig('tree.png', dpi=1200, bbox_inches='tight', pad_inches=0, transparent=True)
+    inf = 1e9
+    plane = sg.Polygon([(inf,inf), (inf,-inf), (-inf,-inf), (-inf,inf)])
+
+    split_points(plane, points, voronoi, range(len(points)))
+
+    plt.axis('equal')
+    plt.axis('off')
+    plt.xlim(-2.5, 2.5)
+    plt.ylim(-2.5, 2.5)
+    # plt.show()
+    plt.savefig('tree.png', dpi=1200, bbox_inches='tight', pad_inches=0, transparent=True)
