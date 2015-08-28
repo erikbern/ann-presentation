@@ -5,23 +5,22 @@ from descartes import PolygonPatch
 import matplotlib.pyplot as plt
 from colorsys import hsv_to_rgb
 
-points = np.random.randn(10000, 2)
+points = np.random.randn(1000, 2)
 
 inf = 1e9
 plane = sg.Polygon([(inf,inf), (inf,-inf), (-inf,-inf), (-inf,inf)])
 
 fig, ax = plt.subplots()
 
-def split_points(poly, points, lw=1.0, lo=0.0, hi=2.0/3.0):
-    if len(points) < 10:
+def split_points(poly, points, lw=3.0, lo=0.0, hi=5.0/6.0):
+    if len(points) <= 1:
         x = [p[0] for p in points]
         y = [p[1] for p in points]
         c = hsv_to_rgb((lo+hi)/2, 1, 1)
 
-        c = np.array([c] * len(points))
-        plt.scatter(x, y, c=c, marker='x')
-
-        # ax.add_patch(PolygonPatch(poly, fc=c, lw=0, alpha=0.2))
+        # c = np.array([c] * len(points))
+        ax.add_patch(PolygonPatch(poly, fc=c, lw=0, zorder=0))
+        plt.scatter(x, y, marker='x', zorder=99, c='black', s=1.0)
 
         return
     
@@ -36,8 +35,8 @@ def split_points(poly, points, lw=1.0, lo=0.0, hi=2.0/3.0):
     halfplane_a = sg.Polygon(np.array([m+v_perp*big,  m+v*big, m-v_perp*big])).intersection(poly)
     halfplane_b = sg.Polygon(np.array([m+v_perp*big,  m-v*big, m-v_perp*big])).intersection(poly)
 
-    ax.add_patch(PolygonPatch(halfplane_a, fc='none', lw=lw))
-    ax.add_patch(PolygonPatch(halfplane_b, fc='none', lw=lw))
+    ax.add_patch(PolygonPatch(halfplane_a, fc='none', lw=lw, zorder=1))
+    ax.add_patch(PolygonPatch(halfplane_b, fc='none', lw=lw, zorder=1))
 
     points_a = [p for p in points if np.dot(p, v)-a > 0]
     points_b = [p for p in points if np.dot(p, v)-a < 0]
