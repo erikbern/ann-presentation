@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import Voronoi
+from colorsys import hsv_to_rgb
+import random
 
 # Code stolen mostly from https://gist.github.com/pv/8036995
 
@@ -85,28 +87,33 @@ def voronoi_finite_polygons_2d(points, radius=None):
         # finish
         new_regions.append(new_region.tolist())
 
-    return new_regions, np.asarray(new_vertices)
+    new_vertices = np.asarray(new_vertices)
+    polygons = []
+    for new_region in new_regions:
+        polygons.append(new_vertices[new_region])
+        
+    return polygons
 
-# make up data points
-np.random.seed(1234)
-points = np.random.randn(250, 2)
+if __name__ == '__main__':
+    # make up data points
+    np.random.seed(1234)
+    points = np.random.randn(1000, 2)
 
-# plot
-regions, vertices = voronoi_finite_polygons_2d(points)
-print "--"
-print regions
-print "--"
-print vertices
+    # plot
+    polygons = voronoi_finite_polygons_2d(points)
+    print polygons
 
-# colorize
-for region in regions:
-    polygon = vertices[region]
-    plt.fill(*zip(*polygon), alpha=0.4)
+    # colorize
+    for polygon in polygons:
+        r = random.random()*5.0/6.0
+        c = hsv_to_rgb(r, 1, 1)
+        plt.fill(*zip(*polygon), fc=c, zorder=0)
 
-plt.plot(points[:,0], points[:,1], 'ko')
-plt.axis('equal')
-plt.xlim(-3, 3)
-plt.ylim(-3, 3)
+    plt.scatter(points[:,0], points[:,1], marker='x', s=1.0, zorder=2, c='black')
 
-plt.savefig('voro.png')
-plt.show()
+    plt.axis('equal')
+    plt.axis('off')
+    plt.xlim(-2.5, 2.5)
+    plt.ylim(-2.5, 2.5)
+    # plt.show()
+    plt.savefig('voro.png', dpi=1200, bbox_inches='tight', pad_inches=0, transparent=True)
