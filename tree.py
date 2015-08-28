@@ -9,22 +9,26 @@ from voronoi import voronoi_polygons
 
 fig, ax = plt.subplots()
 
-def split_points(poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0):
+def split_points(poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0, method='tree'):
     if len(indices) <= 1:
         x = [points[i][0] for i in indices]
         y = [points[i][1] for i in indices]
         c = hsv_to_rgb((lo+hi)/2, 1, 1)
 
-        # c = np.array([c] * len(points))
         poly_vor = cascaded_union([sg.Polygon(voronoi[i]) for i in indices])
 
-        #diff = poly.symmetric_difference(poly_vor)
-        #if diff.geom_type == 'Polygon':
-        #    polys = [diff]
-        #else:
-        #    polys = diff.geoms
+        if method == 'tree':
+            pass
+        elif method == 'voronoi':
+            poly = poly_vor
+        elif method == 'diff':
+            poly = poly.symmetric_difference(poly_vor)
+            c = 'red'
 
-        polys = [poly_vor]
+        if poly.geom_type == 'Polygon':
+            polys = [poly]
+        else:
+            polys = poly.geoms
 
         for poly in polys:
             ax.add_patch(PolygonPatch(poly, fc=c, lw=0, zorder=0))
@@ -49,8 +53,8 @@ def split_points(poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0):
     indices_a = [i for i in indices if np.dot(points[i], v)-a > 0]
     indices_b = [i for i in indices if np.dot(points[i], v)-a < 0]
 
-    split_points(halfplane_a, points, voronoi, indices_a, lw*0.8, lo, (lo+hi)/2)
-    split_points(halfplane_b, points, voronoi, indices_b, lw*0.8, (lo+hi)/2, hi)
+    split_points(halfplane_a, points, voronoi, indices_a, lw*0.8, lo, (lo+hi)/2, method)
+    split_points(halfplane_b, points, voronoi, indices_b, lw*0.8, (lo+hi)/2, hi, method)
 
 if __name__ == '__main__':
     points = np.random.randn(250, 2)
@@ -59,7 +63,7 @@ if __name__ == '__main__':
     inf = 1e9
     plane = sg.Polygon([(inf,inf), (inf,-inf), (-inf,-inf), (-inf,inf)])
 
-    split_points(plane, points, voronoi, range(len(points)))
+    split_points(plane, points, voronoi, range(len(points)), method='voronoi')
 
     plt.axis('equal')
     plt.axis('off')
