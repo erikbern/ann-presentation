@@ -3,7 +3,7 @@ import numpy as np
 import random
 from descartes import PolygonPatch
 import matplotlib.pyplot as plt
-from matplotlib.colors import hsv_to_rgb
+from colorsys import hsv_to_rgb
 
 points = np.random.randn(10000, 2)
 
@@ -12,11 +12,11 @@ plane = sg.Polygon([(inf,inf), (inf,-inf), (-inf,-inf), (-inf,inf)])
 
 fig, ax = plt.subplots()
 
-def split_points(poly, points, lw=1.0, lo=0.0, hi=1.0):
+def split_points(poly, points, lw=1.0, lo=0.0, hi=2.0/3.0):
     if len(points) < 10:
         x = [p[0] for p in points]
         y = [p[1] for p in points]
-        c = hsv_to_rgb(((lo+hi)/2, 1, 1))
+        c = hsv_to_rgb((lo+hi)/2, 1, 1)
 
         c = np.array([c] * len(points))
         plt.scatter(x, y, c=c, marker='x')
