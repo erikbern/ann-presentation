@@ -8,20 +8,21 @@ from colorsys import hsv_to_rgb
 from voronoi import voronoi_polygons
 import functools
 
-def split_points(ax, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0, visitor=None, max_splits=99999, draw_splits=True, splits=None):
+def split_points(ax, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0, visitor=None, max_splits=99999, draw_splits=True, splits=None, seed=''):
     random.seed(','.join([str(i) for i in indices]))
 
     if len(indices) <= 1 or max_splits == 0:
         x = [points[i][0] for i in indices]
         y = [points[i][1] for i in indices]
-        # c = hsv_to_rgb((lo+hi)/2, 1, 1)
-        c = hsv_to_rgb(random.random()*5.0/6.0, 0.7+random.random()*0.3, 0.7+random.random()*0.3)
+        c1 = hsv_to_rgb((lo+hi)/2, 1, 1)
+        c2 = hsv_to_rgb(random.random()*5.0/6.0, 0.7+random.random()*0.3, 0.7+random.random()*0.3)
 
         poly_vor = cascaded_union([sg.Polygon(voronoi[i]) for i in indices])
 
-        visitor.visit(ax, poly, poly_vor, c, x, y, splits)
+        visitor.visit(ax, poly, poly_vor, c1, c2, x, y, splits)
         return
 
+    random.seed(','.join([str(i) for i in indices]) + seed)
     p1, p2 = [points[i] for i in random.sample(indices, 2)]
     v = p2-p1
     m = (p1+p2)/2
@@ -40,8 +41,8 @@ def split_points(ax, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0,
     indices_a = [i for i in indices if np.dot(points[i], v)-a > 0]
     indices_b = [i for i in indices if np.dot(points[i], v)-a < 0]
 
-    split_points(ax, halfplane_a, points, voronoi, indices_a, lw*0.8, lo, (lo+hi)/2, visitor, max_splits-1, draw_splits, (splits, v, a))
-    split_points(ax, halfplane_b, points, voronoi, indices_b, lw*0.8, (lo+hi)/2, hi, visitor, max_splits-1, draw_splits, (splits, -v, -a))
+    split_points(ax, halfplane_a, points, voronoi, indices_a, lw*0.8, lo, (lo+hi)/2, visitor, max_splits-1, draw_splits, (splits, v, a), seed)
+    split_points(ax, halfplane_b, points, voronoi, indices_b, lw*0.8, (lo+hi)/2, hi, visitor, max_splits-1, draw_splits, (splits, -v, -a), seed)
 
 def draw_poly(ax, poly, c, lw=0):
     if poly.geom_type == 'Polygon':
@@ -53,41 +54,59 @@ def draw_poly(ax, poly, c, lw=0):
         ax.add_patch(PolygonPatch(poly, fc=c, lw=lw, zorder=0))
 
 def scatter(ax, x, y):
-    plt.scatter(x, y, marker='x', zorder=99, c='black', s=10.0)
+    ax.scatter(x, y, marker='x', zorder=99, c='black', s=10.0)
 
 class Visitor(object):
-    def visit(self, ax, poly, c, x, y, splits):
+    def visit(self, ax, poly, c1, c2, x, y, splits):
         pass
 
 class TreeVisitor(Visitor):
-    def visit(self, ax, poly, poly_vor, c, x, y, splits):
-        draw_poly(ax, poly, c)
+    def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
+        draw_poly(ax, poly, c1)
         scatter(ax, x, y)
 
 class VoroVisitor(Visitor):
-    def visit(self, ax, poly, poly_vor, c, x, y, splits):
+    def __init__(self, randomize_c=False):
+        self._randomize_c = randomize_c
+
+    def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
+        if self._randomize_c:
+            c = c2
+        else:
+            c = c1
         draw_poly(ax, poly_vor, c, lw=0.2)
         scatter(ax, x, y)
 
 class ScatterVisitor(Visitor):
-    def visit(self, ax, poly, poly_vor, c, x, y, splits):
+    def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
         scatter(ax, x, y)
 
 class HeapVisitor(Visitor):
-    def __init__(self, p):
-        print p
+    def __init__(self, p, alpha=1.0):
         self._p = p
+        self._alpha = alpha
 
-    def visit(self, ax, poly, poly_vor, c, x, y, splits):
+    def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
         margin = float('inf')
         while splits:
             splits, v, a = splits
             margin = min(margin, np.dot(self._p, v) - a)
 
         c = plt.get_cmap('YlOrRd')(1 + margin * 0.5)
-        draw_poly(ax, poly, c)
-        plt.scatter(self._p[0], self._p[1], marker='x', zorder=99, c='red', s=100.0)
+        c = (c[0], c[1], c[2], self._alpha)
 
+        draw_poly(ax, poly, c)
+        ax.scatter(self._p[0], self._p[1], marker='x', zorder=99, c='red', s=100.0)
+        scatter(ax, x, y)
+
+class ForestVisitor(Visitor):
+    def __init__(self, alpha=1.0):
+        self._alpha = alpha
+
+    def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
+        draw_poly(ax, poly, c2 + (self._alpha,))
+        draw_poly(ax, poly_vor, c=(0, 0, 0, 0), lw=0.2)
+        scatter(ax, x, y)
 
 def get_points():
     np.random.seed(4)
@@ -100,24 +119,30 @@ def main():
     inf = 1e9
     plane = sg.Polygon([(inf,inf), (inf,-inf), (-inf,-inf), (-inf,inf)])
 
-    plots = [('none', ScatterVisitor(), 999, False),
-             ('voronoi', VoroVisitor(), 999, False),
-             ('tree', TreeVisitor(), 1, True),
-             ('tree', TreeVisitor(), 2, True),
-             ('tree', TreeVisitor(), 3, True),
-             ('tree', TreeVisitor(), 999, True),
-             ('voronoi', VoroVisitor(), 1, True),
-             ('voronoi', VoroVisitor(), 2, True),
-             ('voronoi', VoroVisitor(), 3, True),
-             ('heap', HeapVisitor(np.random.randn(2)), 999, True)]
+    p = np.random.randn(2)
+    c = (1.0, 0.0, 0.0, 0.01)
+    plots = [('none', ScatterVisitor(), 999, False, 1),
+             ('voronoi', VoroVisitor(True), 999, False, 1),
+             ('tree', TreeVisitor(), 1, True, 1),
+             ('tree', TreeVisitor(), 2, True, 1),
+             ('tree', TreeVisitor(), 3, True, 1),
+             ('tree', TreeVisitor(), 999, True, 1),
+             ('voronoi', VoroVisitor(), 1, True, 1),
+             ('voronoi', VoroVisitor(), 2, True, 1),
+             ('voronoi', VoroVisitor(), 3, True, 1),
+             ('heap', HeapVisitor(p), 999, True, 1),
+             ('forest', ForestVisitor(0.02), 999, False, 100),
+             ('forest-heap', HeapVisitor(p, 0.02), 999, False, 100)]
 
-    for tag, visitor, max_splits, draw_splits in plots:
+    for tag, visitor, max_splits, draw_splits, n_iterations in plots:
         fn = 'tree-%s-%d-%s.png' % (tag, max_splits, draw_splits)
         print fn, '...'
 
         fig, ax = plt.subplots()
 
-        split_points(ax, plane, points, voronoi, range(len(points)), visitor=visitor, max_splits=max_splits, draw_splits=draw_splits)
+        for iteration in xrange(n_iterations):
+            print iteration, '...'
+            split_points(ax, plane, points, voronoi, range(len(points)), visitor=visitor, max_splits=max_splits, draw_splits=draw_splits, seed=(iteration > 1 and str(iteration) or ''))
 
         plt.xlim(-2.5, 2.5)
         plt.ylim(-2.5, 2.5)
