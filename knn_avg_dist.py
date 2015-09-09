@@ -30,4 +30,10 @@ ax.legend(['Distance to nearest neighbor',
 ax.set_title('%d points from a normal distribution' % n)
 ax.set_xlabel('Number of dimensions')
 ax.set_ylabel('Euclidean distance')
-plt.savefig('knn_avg_dist.png', dpi=300, bbox_inches='tight', pad_inches=0, transparent=True)
+ax.annotate('Every point\'s neighborhood is the same!',
+            xy=(fs[-1], ts[-1][0]),
+            xytext=(fs[-2], ts[2][0]),
+            arrowprops=dict(facecolor='black', shrink=0.05),
+            ha='center', va='bottom'
+)
+plt.savefig('knn_avg_dist.png', dpi=600, bbox_inches='tight', pad_inches=0, transparent=True)

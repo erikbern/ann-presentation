@@ -18,7 +18,7 @@ data = []
 for line in gzip.open(fn, 'rb'):
     v = numpy.array([float(x) for x in line.strip().split()[1:]])
     data.append(v)
-    if len(data) == 100000: break
+    if len(data) == 1000000: break
 
 data = numpy.array(data)
 print data.shape
@@ -32,4 +32,4 @@ ax.set_ylabel('Proportion of space explained')
 ax.set_xlabel('Truncated number of dimensions')
 ax.set_title('SVD of GloVe f=200 dataset')
 ax.grid(True, 'both')
-plt.savefig('svd.png', dpi=300, bbox_inches='tight', pad_inches=0, transparent=True)
+plt.savefig('svd.png', dpi=600, bbox_inches='tight', pad_inches=0, transparent=True)
