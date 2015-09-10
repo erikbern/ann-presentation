@@ -133,8 +133,8 @@ def main():
              ('voronoi-tree-2', VoroVisitor(), 2, True, 1, 1),
              ('voronoi-tree-3', VoroVisitor(), 3, True, 1, 1),
              ('heap', HeapVisitor(p), 999, True, 1, 1),
-             ('forest', ForestVisitor(0.02), 999, False, 100, 1),
-             ('forest-heap', HeapVisitor(p, 0.02), 999, False, 100, 1)]
+             ('forest', ForestVisitor(0.05), 999, False, 40, 1),
+             ('forest-heap', HeapVisitor(p, 0.05), 999, False, 40, 1)]
 
     for tag, visitor, max_splits, draw_splits, n_iterations, leaf_size in plots:
         fn = tag + '.png'
