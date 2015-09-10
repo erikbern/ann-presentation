@@ -9,10 +9,10 @@ from voronoi import voronoi_polygons
 import functools
 from sklearn.datasets import make_blobs
 
-def split_points(ax, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0, visitor=None, max_splits=99999, draw_splits=True, splits=None, seed=''):
+def split_points(ax, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0, visitor=None, max_splits=99999, draw_splits=True, splits=None, seed='', leaf_size=1):
     random.seed(','.join([str(i) for i in indices]))
 
-    if len(indices) <= 1 or max_splits == 0:
+    if len(indices) <= leaf_size or max_splits == 0:
         x = [points[i][0] for i in indices]
         y = [points[i][1] for i in indices]
         c1 = hsv_to_rgb((lo+hi)/2, 1, 1)
@@ -42,8 +42,8 @@ def split_points(ax, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0,
     indices_a = [i for i in indices if np.dot(points[i], v)-a > 0]
     indices_b = [i for i in indices if np.dot(points[i], v)-a < 0]
 
-    split_points(ax, halfplane_a, points, voronoi, indices_a, lw*0.8, lo, (lo+hi)/2, visitor, max_splits-1, draw_splits, (splits, v, a), seed)
-    split_points(ax, halfplane_b, points, voronoi, indices_b, lw*0.8, (lo+hi)/2, hi, visitor, max_splits-1, draw_splits, (splits, -v, -a), seed)
+    split_points(ax, halfplane_a, points, voronoi, indices_a, lw*0.8, lo, (lo+hi)/2, visitor, max_splits-1, draw_splits, (splits, v, a), seed, leaf_size)
+    split_points(ax, halfplane_b, points, voronoi, indices_b, lw*0.8, (lo+hi)/2, hi, visitor, max_splits-1, draw_splits, (splits, -v, -a), seed, leaf_size)
 
 def draw_poly(ax, poly, c, lw=0):
     if poly.geom_type == 'Polygon':
@@ -122,28 +122,29 @@ def main():
     plane = sg.Polygon([(inf,inf), (inf,-inf), (-inf,-inf), (-inf,inf)])
 
     p = np.random.randn(2)
-    plots = [('none', ScatterVisitor(), 999, False, 1),
-             ('voronoi', VoroVisitor(True), 999, False, 1),
-             ('tree', TreeVisitor(), 1, True, 1),
-             ('tree', TreeVisitor(), 2, True, 1),
-             ('tree', TreeVisitor(), 3, True, 1),
-             ('tree', TreeVisitor(), 999, True, 1),
-             ('voronoi', VoroVisitor(), 1, True, 1),
-             ('voronoi', VoroVisitor(), 2, True, 1),
-             ('voronoi', VoroVisitor(), 3, True, 1),
-             ('heap', HeapVisitor(p), 999, True, 1),
-             ('forest', ForestVisitor(0.02), 999, False, 100),
-             ('forest-heap', HeapVisitor(p, 0.02), 999, False, 100)]
+    plots = [('scatter', ScatterVisitor(), 999, False, 1, 1),
+             ('voronoi', VoroVisitor(True), 999, False, 1, 1),
+             ('tree-1', TreeVisitor(), 1, True, 1, 1),
+             ('tree-2', TreeVisitor(), 2, True, 1, 1),
+             ('tree-3', TreeVisitor(), 3, True, 1, 1),
+             ('tree-full', TreeVisitor(), 999, True, 1, 1),
+             ('tree-full-K', TreeVisitor(), 999, True, 1, 10),
+             ('voronoi-tree-1', VoroVisitor(), 1, True, 1, 1),
+             ('voronoi-tree-2', VoroVisitor(), 2, True, 1, 1),
+             ('voronoi-tree-3', VoroVisitor(), 3, True, 1, 1),
+             ('heap', HeapVisitor(p), 999, True, 1, 1),
+             ('forest', ForestVisitor(0.02), 999, False, 100, 1),
+             ('forest-heap', HeapVisitor(p, 0.02), 999, False, 100, 1)]
 
-    for tag, visitor, max_splits, draw_splits, n_iterations in plots:
-        fn = 'tree-%s-%d-%s.png' % (tag, max_splits, draw_splits)
+    for tag, visitor, max_splits, draw_splits, n_iterations, leaf_size in plots:
+        fn = tag + '.png'
         print fn, '...'
 
         fig, ax = plt.subplots()
 
         for iteration in xrange(n_iterations):
             print iteration, '...'
-            split_points(ax, plane, points, voronoi, range(len(points)), visitor=visitor, max_splits=max_splits, draw_splits=draw_splits, seed=(iteration > 1 and str(iteration) or ''))
+            split_points(ax, plane, points, voronoi, range(len(points)), visitor=visitor, max_splits=max_splits, draw_splits=draw_splits, seed=(iteration > 1 and str(iteration) or ''), leaf_size=leaf_size)
 
         plt.xlim(-8, 8)
         plt.ylim(-8, 8)
