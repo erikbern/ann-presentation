@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from colorsys import hsv_to_rgb
 from voronoi import voronoi_polygons
 import functools
+from sklearn.datasets import make_blobs
 
 def split_points(ax, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0, visitor=None, max_splits=99999, draw_splits=True, splits=None, seed=''):
     random.seed(','.join([str(i) for i in indices]))
@@ -109,8 +110,9 @@ class ForestVisitor(Visitor):
         scatter(ax, x, y)
 
 def get_points():
-    np.random.seed(4)
-    return np.random.randn(200, 2)
+    np.random.seed(0)
+    X, y = make_blobs(500, 2, centers=10, center_box=(-4, 4))
+    return X
 
 def main():
     points = get_points()
@@ -120,7 +122,6 @@ def main():
     plane = sg.Polygon([(inf,inf), (inf,-inf), (-inf,-inf), (-inf,inf)])
 
     p = np.random.randn(2)
-    c = (1.0, 0.0, 0.0, 0.01)
     plots = [('none', ScatterVisitor(), 999, False, 1),
              ('voronoi', VoroVisitor(True), 999, False, 1),
              ('tree', TreeVisitor(), 1, True, 1),
@@ -144,8 +145,8 @@ def main():
             print iteration, '...'
             split_points(ax, plane, points, voronoi, range(len(points)), visitor=visitor, max_splits=max_splits, draw_splits=draw_splits, seed=(iteration > 1 and str(iteration) or ''))
 
-        plt.xlim(-2.5, 2.5)
-        plt.ylim(-2.5, 2.5)
+        plt.xlim(-8, 8)
+        plt.ylim(-8, 8)
         
         plt.axis('off')
         ax.get_xaxis().set_visible(False)
