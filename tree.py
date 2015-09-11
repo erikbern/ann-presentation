@@ -39,6 +39,9 @@ def split_points(ax, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0,
         ax.add_patch(PolygonPatch(halfplane_a, fc='none', lw=lw, zorder=1))
         ax.add_patch(PolygonPatch(halfplane_b, fc='none', lw=lw, zorder=1))
 
+    if max_splits == 1:
+        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], c='gray', lw=2.0, zorder=2)
+
     indices_a = [i for i in indices if np.dot(points[i], v)-a > 0]
     indices_b = [i for i in indices if np.dot(points[i], v)-a < 0]
 
@@ -109,6 +112,18 @@ class ForestVisitor(Visitor):
         draw_poly(ax, poly_vor, c=(0, 0, 0, 0), lw=0.2)
         scatter(ax, x, y)
 
+class NNsVisitor(Visitor):
+    def __init__(self, p, dist=1.0):
+        self._p = p
+        self._dist = dist
+
+    def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
+        draw_poly(ax, poly, c1)
+        scatter(ax, x, y)
+        c = plt.Circle(self._p, self._dist, edgecolor='black', zorder=3, lw=2.0, fill=False)
+        ax.add_artist(c)
+        ax.scatter(self._p[0], self._p[1], marker='x', zorder=99, c='red', s=100.0)
+
 def get_points():
     np.random.seed(0)
     X, y = make_blobs(500, 2, centers=10, center_box=(-4, 4))
@@ -129,6 +144,7 @@ def main():
              ('tree-3', TreeVisitor(), 3, True, 1, 1),
              ('tree-full', TreeVisitor(), 999, True, 1, 1),
              ('tree-full-K', TreeVisitor(), 999, True, 1, 10),
+             ('tree-point', NNsVisitor(p), 99, True, 1, 1),
              ('voronoi-tree-1', VoroVisitor(), 1, True, 1, 1),
              ('voronoi-tree-2', VoroVisitor(), 2, True, 1, 1),
              ('voronoi-tree-3', VoroVisitor(), 3, True, 1, 1),
@@ -141,13 +157,14 @@ def main():
         print fn, '...'
 
         fig, ax = plt.subplots()
+        fig.set_size_inches(8, 6)
 
         for iteration in xrange(n_iterations):
             print iteration, '...'
             split_points(ax, plane, points, voronoi, range(len(points)), visitor=visitor, max_splits=max_splits, draw_splits=draw_splits, seed=(iteration > 1 and str(iteration) or ''), leaf_size=leaf_size)
 
         plt.xlim(-8, 8)
-        plt.ylim(-8, 8)
+        plt.ylim(-6, 6)
         
         plt.axis('off')
         ax.get_xaxis().set_visible(False)
