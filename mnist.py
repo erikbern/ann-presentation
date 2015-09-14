@@ -39,9 +39,12 @@ main_image = PIL.Image.new('RGB', (img_size * nns + margin, img_size), 'white')
 i = random.randint(0, a.get_n_items() - 1)
 for index, j in enumerate(a.get_nns_by_item(i, 10, 1000)):
     v = a.get_item_vector(j)
-    v = (numpy.array(v)*255).astype(numpy.uint8).reshape(28, 28)
-    image = PIL.Image.fromarray(v)
+    w = (numpy.array(v)*255).astype(numpy.uint8).reshape(28, 28)
+    image = PIL.Image.fromarray(w)
     image = PIL.ImageOps.fit(image, (img_size, img_size)) # , PIL.Image.ANTIALIAS)
+    if index == 0:
+        image.save('seed.jpg')
+        
     main_image.paste(image, (index * img_size + margin * int(index > 0), 0))
 
 main_image.save('mnist_strip.jpg')
