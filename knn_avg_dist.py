@@ -30,15 +30,17 @@ for f in fs_synt:
 
 fs_real = []
 ts_real = []
+es_real = []
 for fn in sys.argv[1:]:
     print fn, '...'
+    es_real.append(fn.split('/')[-1])
     dataset = [numpy.array(x) for item, x in get_vectors(fn, n)]
     f = len(dataset[0])
     avgs = get_avgs(dataset, d=distance.cosine)
     fs_real.append(f)
     ts_real.append(avgs)
 
-print fs_real, ts_real
+print fs_real, ts_real, es_real
 
 def configure_ax():
     fig, ax = plt.subplots()
@@ -69,6 +71,8 @@ ratio_real = [(t[2] - t[0]) / t[0] for t in ts_real]
 fig, ax = configure_ax()
 ax.plot(fs_synt, ratio_synt, 'x-', ms=10, mew=5, c='red')
 ax.plot(fs_real, ratio_real, 'x', ms=10, mew=5, c='blue')
+for f, r, e in zip(fs_real, ratio_real, es_real):
+    ax.annotate('    ' + e, xy=(f, r), fontsize=7, color=(0.2,)*3)
 ax.legend(['Synthetic data: (furthest-closest)/closest avg ratio',
            'Real data: (furthest-closest)/closest avg ratio'], loc=1)
 ax.set_title('%d points from real word vectors' % n)
