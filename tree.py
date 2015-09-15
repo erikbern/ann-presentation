@@ -5,7 +5,10 @@ import random
 from descartes import PolygonPatch
 import matplotlib.pyplot as plt
 from colorsys import hsv_to_rgb
-from voronoi import voronoi_polygons
+try:
+    from voronoi import voronoi_polygons
+except:
+    def voronoi_polygons(x): pass
 import functools
 from sklearn.datasets import make_blobs
 import pygraphviz
@@ -13,13 +16,11 @@ import pygraphviz
 def split_points(ax, graph, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0, visitor=None, max_splits=99999, draw_splits=True, splits=None, seed='', leaf_size=1, parent_node_id=None):
     indices_str = ','.join([str(i) for i in indices])
     random.seed(indices_str)
-    node_id = hash(indices_str)
+    node_id = hash(indices_str + seed)
 
     leaf = (len(indices) <= leaf_size or max_splits == 0)
 
-    label = leaf and len(indices) or ''
-    shape = leaf and 'circle' or 'square'
-    graph.add_node(node_id, label=label, style='filled', fillcolor='%f 1.0 1.0' % ((lo+hi)/2), fontsize=24, fontname='bold', shape=shape)
+    visitor.draw_node(graph, node_id, leaf, indices, lo, hi, splits)
     if parent_node_id:
         graph.add_edge(parent_node_id, node_id)
 
@@ -28,7 +29,9 @@ def split_points(ax, graph, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5
         y = [points[i][1] for i in indices]
         c1 = hsv_to_rgb((lo+hi)/2, 1, 1)
         c2 = hsv_to_rgb(random.random()*5.0/6.0, 0.7+random.random()*0.3, 0.7+random.random()*0.3)
-        poly_vor = cascaded_union([sg.Polygon(voronoi[i]) for i in indices])
+        poly_vor = None
+        if voronoi:
+            poly_vor = cascaded_union([sg.Polygon(voronoi[i]) for i in indices])
 
         visitor.visit(ax, poly, poly_vor, c1, c2, x, y, splits)
         return
@@ -58,14 +61,14 @@ def split_points(ax, graph, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5
     split_points(ax, graph, halfplane_a, points, voronoi, indices_a, lw*0.8, lo, (lo+hi)/2, visitor, max_splits-1, draw_splits, (splits, v, a), seed, leaf_size, node_id)
     split_points(ax, graph, halfplane_b, points, voronoi, indices_b, lw*0.8, (lo+hi)/2, hi, visitor, max_splits-1, draw_splits, (splits, -v, -a), seed, leaf_size, node_id)
 
-def draw_poly(ax, poly, c, lw=0):
+def draw_poly(ax, poly, c, **kwargs):
     if poly.geom_type == 'Polygon':
         polys = [poly]
     else:
         polys = poly.geoms
 
     for poly in polys:
-        ax.add_patch(PolygonPatch(poly, fc=c, lw=lw, zorder=0))
+        ax.add_patch(PolygonPatch(poly, fc=c, zorder=0, **kwargs))
 
 def scatter(ax, x, y):
     ax.scatter(x, y, marker='x', zorder=99, c='black', s=10.0)
@@ -73,6 +76,14 @@ def scatter(ax, x, y):
 class Visitor(object):
     def visit(self, ax, poly, c1, c2, x, y, splits):
         pass
+
+    def node_attrs(self, node_id, leaf, indices, lo, hi):
+        label = leaf and len(indices) or ''
+        shape = leaf and 'circle' or 'square'
+        return dict(label=label, style='filled', fillcolor='%f 1.0 1.0' % ((lo+hi)/2), fontsize=24, fontname='bold', shape=shape)
+
+    def draw_node(self, graph, node_id, leaf, indices, lo, hi, splits):
+        graph.add_node(node_id, **self.node_attrs(node_id, leaf, indices, lo, hi))
 
 class TreeVisitor(Visitor):
     def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
@@ -100,18 +111,30 @@ class HeapVisitor(Visitor):
         self._p = p
         self._alpha = alpha
 
-    def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
+    def get_margin(self, splits):
         margin = float('inf')
         while splits:
             splits, v, a = splits
             margin = min(margin, np.dot(self._p, v) - a)
 
-        c = plt.get_cmap('YlOrRd')(1 + margin * 0.5)
-        c = (c[0], c[1], c[2], self._alpha)
+        return margin
+    
+    def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
+        margin = self.get_margin(splits)
+        c = (margin > -1.0 and c1 or 'none')
+        # c = plt.get_cmap('YlOrRd')(1 + margin * 0.5)
 
-        draw_poly(ax, poly, c)
+        draw_poly(ax, poly, c, alpha=self._alpha)
         ax.scatter(self._p[0], self._p[1], marker='x', zorder=99, c='red', s=100.0)
         scatter(ax, x, y)
+
+    def draw_node(self, graph, node_id, leaf, indices, lo, hi, splits):
+        attrs = self.node_attrs(node_id, leaf, indices, lo, hi)
+        margin = self.get_margin(splits)
+        if margin <= -1:
+            attrs['fillcolor'] = 'white'
+            # attrs['penwidth'] = 10.0
+        graph.add_node(node_id, **attrs)
 
 class ForestVisitor(Visitor):
     def __init__(self, alpha=1.0):
@@ -160,7 +183,7 @@ def main():
              ('voronoi-tree-3', VoroVisitor(), 3, True, 1, 10),
              ('heap', HeapVisitor(p), 999, True, 1, 10),
              ('forest', ForestVisitor(0.05), 999, False, 40, 10),
-             ('forest-heap', HeapVisitor(p, 0.05), 999, False, 40, 10)]
+             ('forest-heap', HeapVisitor(p, 0.20), 999, False, 10, 10)]
 
     for tag, visitor, max_splits, draw_splits, n_iterations, leaf_size in plots:
         fn = tag + '.png'
@@ -169,9 +192,9 @@ def main():
         fig, ax = plt.subplots()
         fig.set_size_inches(8, 6)
 
+        graph = pygraphviz.AGraph()
         for iteration in xrange(n_iterations):
             print iteration, '...'
-            graph = pygraphviz.AGraph()
             split_points(ax, graph, plane, points, voronoi, range(len(points)), visitor=visitor, max_splits=max_splits, draw_splits=draw_splits, seed=(iteration > 1 and str(iteration) or ''), leaf_size=leaf_size)
 
         plt.xlim(-8, 8)
