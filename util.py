@@ -1,5 +1,6 @@
 import gzip
 import struct
+import cPickle
 
 def _get_vectors(fn):
     if fn.endswith('.gz'):
@@ -30,6 +31,14 @@ def _get_vectors(fn):
         for line in f:
             items = line.strip().split()
             yield items[0], [float(x) for x in items[1:]]
+
+    elif fn.endswith('.pkl'): # Assume pickle (MNIST)
+        i = 0
+        for pics, labels in cPickle.load(f):
+            for pic in pics:
+                yield i, pic
+                i += 1
+
 
 def get_vectors(fn, n=float('inf')):
     i = 0

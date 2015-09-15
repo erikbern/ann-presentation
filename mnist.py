@@ -1,11 +1,10 @@
 import os
 from urllib import urlretrieve
-import gzip
-import cPickle
 import annoy
 import random
 import PIL.Image, PIL.ImageOps
 import numpy
+import util
 
 annoy_fn = 'mnist.annoy'
 data_fn = 'mnist.pkl.gz'
@@ -16,12 +15,8 @@ if not os.path.exists(annoy_fn):
         urlretrieve('http://deeplearning.net/data/mnist/mnist.pkl.gz', data_fn)
 
     a = annoy.AnnoyIndex(784, 'euclidean')
-    i = 0
-    f = gzip.open(data_fn)
-    for pics, labels in cPickle.load(f):
-        for pic in pics:
-            a.add_item(i, pic)
-            i += 1
+    for i, pic in util.get_vectors(data_fn):
+        a.add_item(i, pic)
 
     print 'building'
     a.build(10)
