@@ -120,9 +120,9 @@ class NNsVisitor(Visitor):
     def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
         draw_poly(ax, poly, c1)
         scatter(ax, x, y)
-        c = plt.Circle(self._p, self._dist, edgecolor='black', zorder=3, lw=2.0, fill=False)
+        c = plt.Circle(self._p, self._dist, edgecolor='white', zorder=99, lw=2.0, fill=False)
         ax.add_artist(c)
-        ax.scatter(self._p[0], self._p[1], marker='x', zorder=99, c='red', s=100.0)
+        ax.plot(self._p[0], self._p[1], marker='x', zorder=99, c='white', ms=10, mew=5)
 
 def get_points():
     np.random.seed(0)
@@ -137,20 +137,20 @@ def main():
     plane = sg.Polygon([(inf,inf), (inf,-inf), (-inf,-inf), (-inf,inf)])
 
     p = np.random.randn(2)
-    plots = [('scatter', ScatterVisitor(), 999, False, 1, 1),
+    plots = [('scatter', ScatterVisitor(), 999, False, 1, 10),
              ('voronoi', VoroVisitor(True), 999, False, 1, 1),
-             ('tree-1', TreeVisitor(), 1, True, 1, 1),
-             ('tree-2', TreeVisitor(), 2, True, 1, 1),
-             ('tree-3', TreeVisitor(), 3, True, 1, 1),
-             ('tree-full', TreeVisitor(), 999, True, 1, 1),
+             ('tree-1', TreeVisitor(), 1, True, 1, 10),
+             ('tree-2', TreeVisitor(), 2, True, 1, 10),
+             ('tree-3', TreeVisitor(), 3, True, 1, 10),
+             ('tree-full', TreeVisitor(), 999, True, 1, 10),
              ('tree-full-K', TreeVisitor(), 999, True, 1, 10),
-             ('tree-point', NNsVisitor(p), 99, True, 1, 1),
-             ('voronoi-tree-1', VoroVisitor(), 1, True, 1, 1),
-             ('voronoi-tree-2', VoroVisitor(), 2, True, 1, 1),
-             ('voronoi-tree-3', VoroVisitor(), 3, True, 1, 1),
-             ('heap', HeapVisitor(p), 999, True, 1, 1),
-             ('forest', ForestVisitor(0.05), 999, False, 40, 1),
-             ('forest-heap', HeapVisitor(p, 0.05), 999, False, 40, 1)]
+             ('tree-point', NNsVisitor(p), 99, True, 1, 10),
+             ('voronoi-tree-1', VoroVisitor(), 1, True, 1, 10),
+             ('voronoi-tree-2', VoroVisitor(), 2, True, 1, 10),
+             ('voronoi-tree-3', VoroVisitor(), 3, True, 1, 10),
+             ('heap', HeapVisitor(p), 999, True, 1, 10),
+             ('forest', ForestVisitor(0.05), 999, False, 40, 10),
+             ('forest-heap', HeapVisitor(p, 0.05), 999, False, 40, 10)]
 
     for tag, visitor, max_splits, draw_splits, n_iterations, leaf_size in plots:
         fn = tag + '.png'
