@@ -8,16 +8,26 @@ from colorsys import hsv_to_rgb
 from voronoi import voronoi_polygons
 import functools
 from sklearn.datasets import make_blobs
+import pygraphviz
 
-def split_points(ax, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0, visitor=None, max_splits=99999, draw_splits=True, splits=None, seed='', leaf_size=1):
-    random.seed(','.join([str(i) for i in indices]))
+def split_points(ax, graph, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0, visitor=None, max_splits=99999, draw_splits=True, splits=None, seed='', leaf_size=1, parent_node_id=None):
+    indices_str = ','.join([str(i) for i in indices])
+    random.seed(indices_str)
+    node_id = hash(indices_str)
 
-    if len(indices) <= leaf_size or max_splits == 0:
+    leaf = (len(indices) <= leaf_size or max_splits == 0)
+
+    label = leaf and len(indices) or ''
+    shape = leaf and 'circle' or 'square'
+    graph.add_node(node_id, label=label, style='filled', fillcolor='%f 1.0 1.0' % ((lo+hi)/2), fontsize=24, fontname='bold', shape=shape)
+    if parent_node_id:
+        graph.add_edge(parent_node_id, node_id)
+
+    if leaf:
         x = [points[i][0] for i in indices]
         y = [points[i][1] for i in indices]
         c1 = hsv_to_rgb((lo+hi)/2, 1, 1)
         c2 = hsv_to_rgb(random.random()*5.0/6.0, 0.7+random.random()*0.3, 0.7+random.random()*0.3)
-
         poly_vor = cascaded_union([sg.Polygon(voronoi[i]) for i in indices])
 
         visitor.visit(ax, poly, poly_vor, c1, c2, x, y, splits)
@@ -45,8 +55,8 @@ def split_points(ax, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0,
     indices_a = [i for i in indices if np.dot(points[i], v)-a > 0]
     indices_b = [i for i in indices if np.dot(points[i], v)-a < 0]
 
-    split_points(ax, halfplane_a, points, voronoi, indices_a, lw*0.8, lo, (lo+hi)/2, visitor, max_splits-1, draw_splits, (splits, v, a), seed, leaf_size)
-    split_points(ax, halfplane_b, points, voronoi, indices_b, lw*0.8, (lo+hi)/2, hi, visitor, max_splits-1, draw_splits, (splits, -v, -a), seed, leaf_size)
+    split_points(ax, graph, halfplane_a, points, voronoi, indices_a, lw*0.8, lo, (lo+hi)/2, visitor, max_splits-1, draw_splits, (splits, v, a), seed, leaf_size, node_id)
+    split_points(ax, graph, halfplane_b, points, voronoi, indices_b, lw*0.8, (lo+hi)/2, hi, visitor, max_splits-1, draw_splits, (splits, -v, -a), seed, leaf_size, node_id)
 
 def draw_poly(ax, poly, c, lw=0):
     if poly.geom_type == 'Polygon':
@@ -161,7 +171,8 @@ def main():
 
         for iteration in xrange(n_iterations):
             print iteration, '...'
-            split_points(ax, plane, points, voronoi, range(len(points)), visitor=visitor, max_splits=max_splits, draw_splits=draw_splits, seed=(iteration > 1 and str(iteration) or ''), leaf_size=leaf_size)
+            graph = pygraphviz.AGraph()
+            split_points(ax, graph, plane, points, voronoi, range(len(points)), visitor=visitor, max_splits=max_splits, draw_splits=draw_splits, seed=(iteration > 1 and str(iteration) or ''), leaf_size=leaf_size)
 
         plt.xlim(-8, 8)
         plt.ylim(-6, 6)
@@ -170,6 +181,8 @@ def main():
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         plt.savefig(fn, dpi=300, bbox_inches='tight', pad_inches=0, transparent=True)
+        graph.layout(prog='dot')
+        graph.draw(tag + '-graphviz.png')
 
 if __name__ == '__main__':
     main()
