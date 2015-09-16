@@ -12,6 +12,7 @@ except:
 import functools
 from sklearn.datasets import make_blobs
 import pygraphviz
+from scipy.spatial import distance
 
 def split_points(ax, graph, poly, points, voronoi, indices, lw=3.0, lo=0.0, hi=5.0/6.0, visitor=None, max_splits=99999, draw_splits=True, splits=None, seed='', leaf_size=1, parent_node_id=None):
     indices_str = ','.join([str(i) for i in indices])
@@ -107,11 +108,20 @@ class ScatterVisitor(Visitor):
         scatter(ax, x, y)
 
 class ScatterNNsVisitor(Visitor):
+    def __init__(self, p, nns=20):
+        self._p = p
+        self._nns = nns
+
     def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
         scatter(ax, x, y)
-        c = plt.Circle(self._p, self._dist, edgecolor='red', zorder=99, lw=2.0, fill=False)
+        ax.plot(self._p[0], self._p[1], marker='x', zorder=99, c='blue', ms=3, mew=1)
+        xys = [np.array((x, y)) for x, y in zip(x, y)]
+        xys.sort(key=lambda p: distance.euclidean(self._p, p))
+        for p in xys[:self._nns]:
+            ax.plot([self._p[0], p[0]], [self._p[1], p[1]], 'r-')
+
+        c = plt.Circle(self._p, distance.euclidean(self._p, xys[self._nns-1]), edgecolor='red', zorder=99, lw=1.0, fill=False, linestyle='dashed')
         ax.add_artist(c)
-        ax.plot(self._p[0], self._p[1], marker='x', zorder=99, c='red', ms=10, mew=5)
 
 class HeapVisitor(Visitor):
     def __init__(self, p, min_margin=-0.5):
@@ -168,8 +178,11 @@ def main():
     plane = sg.Polygon([(inf,inf), (inf,-inf), (-inf,-inf), (-inf,inf)])
 
     p = np.array([0, 0]) # np.random.randn(2)
-    plots = [('scatter', ScatterVisitor(), 999, False, '', 10),
-             ('scatter-nns', ScatterNNsVisitor(), 999, False, '', 10),
+    q = np.array([-2, -2])
+    plots = [('scatter', ScatterVisitor(), 0, False, '', 10),
+             ('scatter-nns-5', ScatterNNsVisitor(q, 5), 0, False, '', 10),
+             ('scatter-nns-20', ScatterNNsVisitor(q, 20), 0, False, '', 10),
+             ('scatter-nns-100', ScatterNNsVisitor(q, 100), 0, False, '', 10),
              ('voronoi', VoroVisitor(True), 999, False, '', 1),
              ('tree-1', TreeVisitor(), 1, True, '', 10),
              ('tree-2', TreeVisitor(), 2, True, '', 10),
