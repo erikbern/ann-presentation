@@ -106,6 +106,13 @@ class ScatterVisitor(Visitor):
     def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
         scatter(ax, x, y)
 
+class ScatterNNsVisitor(Visitor):
+    def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
+        scatter(ax, x, y)
+        c = plt.Circle(self._p, self._dist, edgecolor='red', zorder=99, lw=2.0, fill=False)
+        ax.add_artist(c)
+        ax.plot(self._p[0], self._p[1], marker='x', zorder=99, c='red', ms=10, mew=5)
+
 class HeapVisitor(Visitor):
     def __init__(self, p, min_margin=-0.5):
         self._p = p
@@ -162,6 +169,7 @@ def main():
 
     p = np.array([0, 0]) # np.random.randn(2)
     plots = [('scatter', ScatterVisitor(), 999, False, '', 10),
+             ('scatter-nns', ScatterNNsVisitor(), 999, False, '', 10),
              ('voronoi', VoroVisitor(True), 999, False, '', 1),
              ('tree-1', TreeVisitor(), 1, True, '', 10),
              ('tree-2', TreeVisitor(), 2, True, '', 10),
