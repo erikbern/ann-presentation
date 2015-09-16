@@ -107,9 +107,9 @@ class ScatterVisitor(Visitor):
         scatter(ax, x, y)
 
 class HeapVisitor(Visitor):
-    def __init__(self, p, alpha=1.0):
+    def __init__(self, p, min_margin=-0.5):
         self._p = p
-        self._alpha = alpha
+        self._min_margin = min_margin
 
     def get_margin(self, splits):
         margin = float('inf')
@@ -121,29 +121,20 @@ class HeapVisitor(Visitor):
     
     def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
         margin = self.get_margin(splits)
-        c = (margin > -1.0 and c1 or 'none')
-        # c = plt.get_cmap('YlOrRd')(1 + margin * 0.5)
+        c = (margin > self._min_margin and c1 or 'none')
 
-        draw_poly(ax, poly, c, alpha=self._alpha)
-        ax.scatter(self._p[0], self._p[1], marker='x', zorder=99, c='red', s=100.0)
+        draw_poly(ax, poly, c)
+        ax.plot(self._p[0], self._p[1], marker='x', zorder=99, c='red', ms=10, mew=5)
         scatter(ax, x, y)
 
     def draw_node(self, graph, node_id, leaf, indices, lo, hi, splits):
         attrs = self.node_attrs(node_id, leaf, indices, lo, hi)
         margin = self.get_margin(splits)
-        if margin <= -1:
+        if margin >= self._min_margin:
+            attrs['penwidth'] = 10.0
+        else:
             attrs['fillcolor'] = 'white'
-            # attrs['penwidth'] = 10.0
         graph.add_node(node_id, **attrs)
-
-class ForestVisitor(Visitor):
-    def __init__(self, alpha=1.0):
-        self._alpha = alpha
-
-    def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
-        draw_poly(ax, poly, c2 + (self._alpha,))
-        draw_poly(ax, poly_vor, c=(0, 0, 0, 0), lw=0.2)
-        scatter(ax, x, y)
 
 class NNsVisitor(Visitor):
     def __init__(self, p, dist=1.0):
@@ -169,23 +160,26 @@ def main():
     inf = 1e9
     plane = sg.Polygon([(inf,inf), (inf,-inf), (-inf,-inf), (-inf,inf)])
 
-    p = np.random.randn(2)
-    plots = [('scatter', ScatterVisitor(), 999, False, 1, 10),
-             ('voronoi', VoroVisitor(True), 999, False, 1, 1),
-             ('tree-1', TreeVisitor(), 1, True, 1, 10),
-             ('tree-2', TreeVisitor(), 2, True, 1, 10),
-             ('tree-3', TreeVisitor(), 3, True, 1, 10),
-             ('tree-full', TreeVisitor(), 999, True, 1, 10),
-             ('tree-full-K', TreeVisitor(), 999, True, 1, 10),
-             ('tree-point', NNsVisitor(p), 99, True, 1, 10),
-             ('voronoi-tree-1', VoroVisitor(), 1, True, 1, 10),
-             ('voronoi-tree-2', VoroVisitor(), 2, True, 1, 10),
-             ('voronoi-tree-3', VoroVisitor(), 3, True, 1, 10),
-             ('heap', HeapVisitor(p), 999, True, 1, 10),
-             ('forest', ForestVisitor(0.05), 999, False, 40, 10),
-             ('forest-heap', HeapVisitor(p, 0.20), 999, False, 10, 10)]
+    p = np.array([0, 0]) # np.random.randn(2)
+    plots = [('scatter', ScatterVisitor(), 999, False, '', 10),
+             ('voronoi', VoroVisitor(True), 999, False, '', 1),
+             ('tree-1', TreeVisitor(), 1, True, '', 10),
+             ('tree-2', TreeVisitor(), 2, True, '', 10),
+             ('tree-3', TreeVisitor(), 3, True, '', 10),
+             ('tree-full', TreeVisitor(), 999, True, '', 10),
+             ('tree-full-K', TreeVisitor(), 999, True, '', 10),
+             ('tree-point', NNsVisitor(p), 99, True, '', 10),
+             ('voronoi-tree-1', VoroVisitor(), 1, True, '', 10),
+             ('voronoi-tree-2', VoroVisitor(), 2, True, '', 10),
+             ('voronoi-tree-3', VoroVisitor(), 3, True, '', 10),
+             ('heap', HeapVisitor(p), 999, True, '', 10),
+             ('heap-1', HeapVisitor(p), 999, True, '1', 10),
+             ('heap-2', HeapVisitor(p), 999, True, '2', 10),
+             ('heap-3', HeapVisitor(p), 999, True, '3', 10),
+             ('heap-4', HeapVisitor(p), 999, True, '4', 10),
+             ('heap-5', HeapVisitor(p), 999, True, '5', 10)]
 
-    for tag, visitor, max_splits, draw_splits, n_iterations, leaf_size in plots:
+    for tag, visitor, max_splits, draw_splits, seed, leaf_size in plots:
         fn = tag + '.png'
         print fn, '...'
 
@@ -193,19 +187,19 @@ def main():
         fig.set_size_inches(8, 6)
 
         graph = pygraphviz.AGraph()
-        for iteration in xrange(n_iterations):
-            print iteration, '...'
-            split_points(ax, graph, plane, points, voronoi, range(len(points)), visitor=visitor, max_splits=max_splits, draw_splits=draw_splits, seed=(iteration > 1 and str(iteration) or ''), leaf_size=leaf_size)
+        split_points(ax, graph, plane, points, voronoi, range(len(points)), visitor=visitor, max_splits=max_splits, draw_splits=draw_splits, seed=seed, leaf_size=leaf_size)
 
-        plt.xlim(-8, 8)
-        plt.ylim(-6, 6)
+        ax.set_xlim(-8, 8)
+        ax.set_ylim(-6, 6)
         
-        plt.axis('off')
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
-        plt.savefig(fn, dpi=300, bbox_inches='tight', pad_inches=0, transparent=True)
+        
+        fig.savefig(fn, dpi=300, bbox_inches='tight', pad_inches=0, transparent=True)
+
         graph.layout(prog='dot')
         graph.draw(tag + '-graphviz.png')
+
 
 if __name__ == '__main__':
     main()
