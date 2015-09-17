@@ -194,6 +194,7 @@ def main():
              ('voronoi-tree-2', VoroVisitor(), 2, True, '', 10),
              ('voronoi-tree-3', VoroVisitor(), 3, True, '', 10),
              ('heap', HeapVisitor(p), 999, True, '', 10),
+             ('heap-pos', HeapVisitor(p, 0), 999, True, '', 10),
              ('heap-1', HeapVisitor(p), 999, True, '1', 10),
              ('heap-2', HeapVisitor(p), 999, True, '2', 10),
              ('heap-3', HeapVisitor(p), 999, True, '3', 10),
