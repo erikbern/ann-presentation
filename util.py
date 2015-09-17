@@ -18,7 +18,7 @@ def _get_vectors(fn):
         while True:
             pos = f.tell()
             buf = f.read(1024)
-            if buf == '': return
+            if buf == '' or buf == '\n': return
             i = buf.index(' ')
             word = buf[:i]
             f.seek(pos + i + 1)
