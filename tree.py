@@ -127,6 +127,9 @@ class HeapVisitor(Visitor):
     def __init__(self, p, min_margin=-0.5):
         self._p = p
         self._min_margin = min_margin
+        self.polys = []
+        self.x = []
+        self.y = []
 
     def get_margin(self, splits):
         margin = float('inf')
@@ -143,6 +146,10 @@ class HeapVisitor(Visitor):
         draw_poly(ax, poly, c)
         ax.plot(self._p[0], self._p[1], marker='x', zorder=99, c='red', ms=10, mew=5)
         scatter(ax, x, y)
+        if margin > self._min_margin:
+            self.polys.append(poly)
+            self.x += x
+            self.y += y
 
     def draw_node(self, graph, node_id, leaf, indices, lo, hi, splits):
         attrs = self.node_attrs(node_id, leaf, indices, lo, hi)
@@ -165,6 +172,43 @@ class NNsVisitor(Visitor):
         ax.add_artist(c)
         ax.plot(self._p[0], self._p[1], marker='x', zorder=99, c='white', ms=10, mew=5)
 
+class CandidatesVisitor(Visitor):
+    def __init__(self, p, heap_visitors, mode):
+        self._p = p
+        self._heap_visitors = heap_visitors
+        self._mode = mode
+        self._nns = 30
+
+    def visit(self, ax, poly, poly_vor, c1, c2, x, y, splits):
+        scatter(ax, x, y)
+        polys = sum([h.polys for h in self._heap_visitors], [])
+        candidates_union = cascaded_union(polys)
+        points = {}
+        for h in self._heap_visitors:
+            for x, y in zip(h.x, h.y):
+                points[(x, y)] = np.array((x, y))
+        points = list(points.values()) # remove duplicates
+        points.sort(key=lambda p: distance.euclidean(self._p, p))
+
+        if self._mode == 'union':
+            ax.plot(self._p[0], self._p[1], marker='x', zorder=99, c='red', ms=10, mew=5)
+            draw_poly(ax, candidates_union, 'none', lw=2.0, hatch='x')
+            
+        elif self._mode == 'dist':
+            ax.plot(self._p[0], self._p[1], marker='x', zorder=99, c='blue', ms=3, mew=1)
+            for p in points:
+                ax.plot([self._p[0], p[0]], [self._p[1], p[1]], 'r-')
+            draw_poly(ax, candidates_union, 'none', lw=2.0)
+
+        elif self._mode == 'top':
+            ax.plot(self._p[0], self._p[1], marker='x', zorder=99, c='blue', ms=3, mew=1)
+            for p in points[:self._nns]:
+                ax.plot([self._p[0], p[0]], [self._p[1], p[1]], 'r-')
+
+            c = plt.Circle(self._p, distance.euclidean(self._p, points[self._nns-1]), edgecolor='red', zorder=99, lw=1.0, fill=False, linestyle='dashed')
+            ax.add_artist(c)
+            draw_poly(ax, candidates_union, 'none', lw=2.0)
+
 def get_points():
     np.random.seed(0)
     X, y = make_blobs(500, 2, centers=10, center_box=(-4, 4))
@@ -179,6 +223,9 @@ def main():
 
     p = np.array([0, 0]) # np.random.randn(2)
     q = np.array([-2, -2])
+    heap_visitors = [HeapVisitor(p) for i in xrange(3)]
+    heap_plots = [('heap-%d' % i, h, 999, True, str(i), 10) for i, h in enumerate(heap_visitors)]
+
     plots = [('scatter', ScatterVisitor(), 0, False, '', 10),
              ('scatter-nns-5', ScatterNNsVisitor(q, 5), 0, False, '', 10),
              ('scatter-nns-20', ScatterNNsVisitor(q, 20), 0, False, '', 10),
@@ -195,11 +242,12 @@ def main():
              ('voronoi-tree-3', VoroVisitor(), 3, True, '', 10),
              ('heap', HeapVisitor(p), 999, True, '', 10),
              ('heap-pos', HeapVisitor(p, 0), 999, True, '', 10),
-             ('heap-1', HeapVisitor(p), 999, True, '1', 10),
-             ('heap-2', HeapVisitor(p), 999, True, '2', 10),
-             ('heap-3', HeapVisitor(p), 999, True, '3', 10),
-             ('heap-4', HeapVisitor(p), 999, True, '4', 10),
-             ('heap-5', HeapVisitor(p), 999, True, '5', 10)]
+             heap_plots[0],
+             heap_plots[1],
+             heap_plots[2],
+             ('candidates', CandidatesVisitor(p, heap_visitors, 'union'), 0, True, '', 10),
+             ('candidates-dist', CandidatesVisitor(p, heap_visitors, 'dist'), 0, True, '', 10),
+             ('candidates-top', CandidatesVisitor(p, heap_visitors, 'top'), 0, True, '', 10)]
 
     for tag, visitor, max_splits, draw_splits, seed, leaf_size in plots:
         fn = tag + '.png'
