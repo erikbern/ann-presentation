@@ -10,6 +10,9 @@ Usage: python nearest_neighbors.py <data file> [<search k>]
   3. A plain text file with the same format as above
 * Dependencies: lmdb (pip install lmdb)
 * Will be (very) slow first time because it creates big data structures, fast subsequent times
+
+An additional feature is that each word in input can be preceded with a plus or a minus.
+This will add vectors (eg. the canonical king +woman -man example).
 '''
 
 import annoy
@@ -62,10 +65,14 @@ with env.begin() as txn:
         if line.strip() == 'EXIT':
             break
 
-        words = line.strip().split()
-        ids = [int(txn.get('w' + word)[1:]) for word in words]
-        vs = [a.get_item_vector(id) for id in ids]
-        vs = [v / numpy.dot(v, v)**0.5 for v in vs]
+        ids = []
+        for word in line.strip().split():
+            if word[0] in ['+', '-']:
+                word, f = word[1:], int(word[0] + '1')
+            id = int(txn.get('w' + word)[1:])
+            words.append((f, id))
+        vs = [(f, a.get_item_vector(id)) for f, id in ids]
+        vs = [f * v / numpy.dot(v, v)**0.5 for f, v in vs]
         v = numpy.sum(vs, axis=0)
 
         for id, dist in zip(*a.get_nns_by_vector(v, 20, search_k, True)):
