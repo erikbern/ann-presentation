@@ -1,5 +1,6 @@
 ![Cool plot](https://raw.github.com/erikbern/ann-presentation/master/tree-full-K.png)
 ![Cool plot](https://raw.github.com/erikbern/ann-presentation/master/mnist_strips.jpg)
+![Cool plot](https://raw.github.com/erikbern/ann-presentation/master/tree-full-K-graphviz.png)
 
 ANN-presentation
 ----------------
